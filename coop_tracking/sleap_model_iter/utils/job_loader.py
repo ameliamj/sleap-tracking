@@ -15,11 +15,20 @@ class JobLoader:
 
     def get_undone_vids(self, inst, color_pair=None):
         # only try to update the rows that don't have a prediction
-        undone = self.df[self.df['pred'] == False]
+        undone = self.df[self.df['tracked'] == False]
         for index, row in undone.iterrows():
-            locations = load_file(row)
-            if locations is not None:
-                self.df.at[index, 'pred'] = True
+            # OLD: tried to load files
+            # locations = load_file(row)
+            # if locations is not None:
+            #     self.df.at[index, 'tracked'] = True
+
+            # NEW: check multiple file paths for file
+            reg_track = os.path.exists(f"{ROOTDIR}/{row['dir']}/{row['session']}/Tracking/slp/{row['vid']}.predictions.slp")
+            bottom_track = os.path.exists(f"{ROOTDIR}/{row['dir']}/{row['session']}/Tracking_BottomUp/slp/{row['vid']}.predictions.slp")
+            top_track = os.path.exists(f"{ROOTDIR}/{row['dir']}/{row['session']}/Tracking_TopDown/slp/{row['vid']}.predictions.slp")
+
+            if reg_track or bottom_track or top_track:
+                self.df.at[index, 'tracked'] = True
         self.df.to_csv(self.filename, index=False)
         # filter by instance and color pair    
         subset = self.df[(self.df['single/multi'] == inst)]
@@ -28,7 +37,7 @@ class JobLoader:
                 subset = subset[(subset['fiber pho'])]
             else:
                 subset = subset[(subset['color pair'] == color_pair)]
-        run = subset[subset['pred'] == False]
+        run = subset[subset['tracked'] == False]
         return run, subset
 
     def get_job_script(self, inst, color_pair=None, write=False, redo=False):

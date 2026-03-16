@@ -132,8 +132,6 @@ def get_color(vid, coh):
 # given a row of the data frame from PredLoader, will load the h5 files and return 
 # the predicted locations
 def load_file(row):
-    # tt = TESTDIR if row['test/train'] == 'test' else (TRAINDIR if row['test/train'] == 'train' else LADIR)
-    # tt = tt if row['test/train'] != '1by1' else BYDIR
     tt = row['dir']
     session = row['session']
     vid = row['vid']
