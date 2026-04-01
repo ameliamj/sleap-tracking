@@ -1,0 +1,2 @@
+dir,session,vid,color type,color pair,tracked,error,lever,mag,event id,fiber pho,coop thresh,animal id,cohort,visual,vehicle,familiar,useable,single/multi,correct,pred,initial nan,vel nan,final nan,levers,mags
+Training_Coop_Uncued_LargeArena/,121625,121625_COOP_SMTRAIN_SM009R-SM009G_Camera1,collar,RG,False,,False,False,False,False,,SM009R-SM009G,SM,transparent,,familiar,False,multi,True,True,0.0010996141501454,0.0111015839542078,0.0061793912146738,True,True

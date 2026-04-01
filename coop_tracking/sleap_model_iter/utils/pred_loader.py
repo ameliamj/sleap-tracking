@@ -6,7 +6,7 @@ from tqdm import tqdm
 import os
 
 from .error_utils import get_vs, get_color, get_cohort, load_file, get_nan_prec, nan_good, high_vel_nan, lowess_fill, save_file, load_file_fiber_redo
-# from .id_utils import get_lever_mag
+from .id_utils import get_lever_mag
 from .global_utils import DYED_COHORTS, COLLAR_COHORTS
 from .global_utils import ROOTDIR, TESTDIR, TRAINDIR, BYDIR
 
@@ -126,28 +126,28 @@ class PredLoader:
         correct_df = self.df.loc[self.df['correct'] == True]
         for index, row in tqdm(correct_df.iterrows()):
             locations = load_file(row)
-
             if locations is not None and row['correct']: # just double checking for no good reason
                 locations = high_vel_nan(locations)
                 locations = lowess_fill(locations)
+                locations = high_vel_nan(locations)
                 self.df.at[index, 'final nan'] = get_nan_prec(locations)
                 
                 save_file(row, locations)
         self.df.to_csv(self.filename, index=False)
 
     # fill in the rat id for each lever and mag event
-    # def get_event_ids(self):
-    #     levers = []
-    #     mags = []
-    #     errors = pd.DataFrame()
-    #     for index, row in tqdm(self.df.iterrows()):
-    #         lever, mag, errors = get_lever_mag(row, errors)
-    #         levers.append(lever)
-    #         mags.append(mag)
-    #     self.df['levers'] = levers
-    #     self.df['mags'] = mags
-    #     self.df.to_csv(self.filename, index=False)
-    #     errors.to_csv('errors.csv', index=False)
+    def get_event_ids(self):
+        levers = []
+        mags = []
+        errors = pd.DataFrame()
+        for index, row in tqdm(self.df.iterrows()):
+            lever, mag, errors = get_lever_mag(row, errors)
+            levers.append(lever)
+            mags.append(mag)
+        self.df['levers'] = levers
+        self.df['mags'] = mags
+        self.df.to_csv(self.filename, index=False)
+        errors.to_csv('errors.csv', index=False)
 
 
     # get the trial type (coop, ineq, comp) for multi animal test vids
@@ -197,7 +197,6 @@ class PredLoader:
                         if vid_index.shape[0] == 1:
                             preds.df.at[vid_index[0], 'familiarity'] = row['SubTwoFam']
                         else:
-                            # print(sesh, row)
                             missing_count += 1
 
         print(f'there are {total_coop} total cooperation trials')

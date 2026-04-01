@@ -140,11 +140,11 @@ def load_file(row):
         #      with h5py.File(ROOTDIR + tt + session + '/Tracking/h5/' + vid + 'predictions.h5','r') as f:
         #         locations = f["tracks"][:].T
         # else: 
-        with h5py.File(ROOTDIR + tt + '/' + session + '/Tracking/h5/' + vid + '.predictions.h5','r') as f:
+        with h5py.File(ROOTDIR + tt + '/' + str(session) + '/Tracking/h5/' + vid + '.predictions.h5','r') as f:
             locations = f["tracks"][:].T
         return locations
     except FileNotFoundError:
-        # print(ROOTDIR + tt + '/' + session + '/Tracking/h5/' + vid + '.predictions.h5')
+        # print(ROOTDIR + tt + '/' + str(session) + '/Tracking/h5/' + vid + '.predictions.h5')
         return None
 
 import os
@@ -164,12 +164,9 @@ def load_file_fiber_redo(row):
 # given a row of the data frame from PredLoader and the corrected locations, will save
 # the corrected locations over the old predicted locations
 def save_file(row, locations):
-    tt = TESTDIR if row['test/train'] == 'test' else (TRAINDIR if row['test/train'] == 'train' else LADIR)
+    tt = row['dir']
     session = row['session']
     vid = row['vid']
-    if row['test/train'] == 'lg train':
-        f = h5py.File(ROOTDIR + tt+ session + '/Tracking/h5/' + vid + 'predictions.h5','r+')
-    else:
-        f = h5py.File(ROOTDIR + tt+ session + '/Tracking/h5/' + vid + '.predictions.h5','r+')
+    f = h5py.File(ROOTDIR + tt + str(session) + '/Tracking/h5/' + vid + '.predictions.h5','r+')
     f["tracks"][:] = locations.T
     f.close()

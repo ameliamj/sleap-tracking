@@ -60,3 +60,5 @@ mag1y = 200
 mag2y = 440
 magx = 1280
 MAXDIST = 100
+
+

@@ -64,7 +64,7 @@ class JobLoader:
             if not os.path.isdir(output_path + '/h5'):
                 os.mkdir(output_path + '/h5')
 
-            video_path = ROOTDIR + tt + row['session'] + '/Videos/' + row['vid'] + '.mp4'
+            video_path = ROOTDIR + tt + str(row['session']) + '/Videos/' + row['vid'] + '.mp4'
             output_file = row['vid'] + '.predictions.'
 
             if inst == 'single':
