@@ -8,21 +8,12 @@ import cv2
 # given a row of the data frame from PredLoader, will add the rat id to each lever and mag
 # event or return that a lever / mag file doesn't exist for this trial
 def get_lever_mag(row, errors):
-
-    # Method 1: Appending rows using pd.concat
-    # new_row = pd.DataFrame([{'col1': 1, 'col2': 'A'}])
-    # df = pd.concat([df, new_row], ignore_index=True)
     
-    tt = row['dir'] # TESTDIR if row['test/train'] == 'test' else TRAINDIR
-    behav = '/Behavioral/processed/' # if row['test/train'] == 'test' else '/Behavioral/'
+    tt = row['dir'] 
+    behav = '/Behavioral/processed/'
     session = str(row['session'])
     vid = row['vid']
-    # if row['test/train'] == 'test': 
-    #     vid = row['vid']
-    # else:
-    #     vid_temp = row['vid'].split('_')
-    #     vid = vid_temp[0] + '_'  + vid_temp[3]
-    if  row['pred']:
+    if row['pred']:
         locations = load_file(row)
 
     # Load the video
@@ -31,40 +22,70 @@ def get_lever_mag(row, errors):
     # Get FPS
     fps = cap.get(cv2.CAP_PROP_FPS)
         
-    lever_exists, mag_exists = True, True
+    lever_exists, mag_exists = True, False
+    lev_error, mag_error = np.nan, np.nan
     try:
         lever = pd.read_csv(ROOTDIR + tt + session + behav + 'lever/' +  vid + '_lever.csv')
-        if row['pred']:
+        if row['pred'] and locations is not None:
             lever, nan_count = get_rat_id(lever, locations, 'lever', fps)
             lever.to_csv(ROOTDIR + tt + session + behav + 'lever/' +  vid + '_lever.csv', index=False)
-            if nan_count > lever.shape[0] / 3 and row['correct'] == True:
-                row['check'] = 'here'
-                print(row)
+            # if nan_count > lever.shape[0] / 3 and row['correct'] == True:
+            #     row['check'] = 'here'
+                # print(row)
                 # new_row = pd.DataFrame(row)
-                errors = pd.concat([errors, row], ignore_index=True)
+                # errors = pd.concat([errors, row], ignore_index=True)
+            print(session, vid, 100 * np.sum(np.isnan(lever['RatID'])) / lever.shape[0], row['initial nan'])
+            lev_error = 100 * np.sum(np.isnan(lever['RatID'])) / lever.shape[0]
+        else:
+            print(session, vid, 'locations is none')
     except FileNotFoundError:
+        print(session, vid, 'cant find lever file')
         lever_exists = False
         
     try:
         mag = pd.read_csv(ROOTDIR + tt + session + behav + 'mag/' + vid + '_mag.csv')
-        if  row['pred']:
+        if  row['pred'] and locations is not None:
             try:
                 mag, nan_count = get_rat_id(mag, locations, 'mag', fps)
+                mag_error = 100 * np.sum(np.isnan(mag['RatID'])) / lever.shape[0]
             except:
                 print('mag not working', row)
             mag.to_csv(ROOTDIR + tt + session + behav + 'mag/' +  vid + '_mag.csv', index=False)
-            if nan_count > mag.shape[0] / 3 and row['correct'] == True:
-                row['check'] = 'here'
-                errors = pd.concat([errors, row], ignore_index=True)
+            # if nan_count > mag.shape[0] / 3 and row['correct'] == True:
+            #     row['check'] = 'here'
+            #     errors = pd.concat([errors, row], ignore_index=True)
     except FileNotFoundError:
         mag_exists = False 
-    return lever_exists, mag_exists, errors
+    
+    return lever_exists, mag_exists, lev_error, mag_error
     
 # for a given list of events and locations and event type (mag/lever), will add an 
 # additional column to events that has the identity of which rat particapted in the 
 # event given the rat locations
 def get_rat_id(events, locations, event_type, fps):
+    pad = 100
+    x = locations[:, 0, 0, :].flatten()
+    y = locations[:, 0, 1, :].flatten()
+    
+    # Adjust these depending on how aggressive you want to be
+    low, high = 5, 95
+    
+    x_min, x_max = np.nanpercentile(x, [low, high])
+    y_min, y_max = np.nanpercentile(y, [low, high])
+    
+    # Corners of the box
+    bottom_left  = (x_min, y_min)
+    top_right    = (x_max, y_max)
+    top_left     = (x_min, y_max)
+    bottom_right = (x_max, y_min)
+
+    levx, magx = x_min, x_max
+    lev2y, lev1y = y_min + (.25 * (y_max - y_min)), y_min + (.75 * (y_max - y_min))
+    mag2y, mag1y = y_min + (.25 * (y_max - y_min)), y_min + (.75 * (y_max - y_min))
+
+    
     ratID = []
+    index_count = 0
     for row in events.itertuples(index=False):
 
         # check if there is an absolute time
@@ -77,13 +98,15 @@ def get_rat_id(events, locations, event_type, fps):
         # is there an absolute time
         if np.isnan(row.AbsTime):
             ratNum = np.nan
+            # print(index_count, 'abs time is nan')
         else:
             # calculate frame
             frame = int(row.AbsTime * fps)
 
             # make sure frame is within the range of locations
-            if frame > locations.shape[0]:
+            if frame >= locations.shape[0]:
                 ratNum = np.nan
+                # print(index_count, 'frame out of range')
             else:
                 # Get coordinates of both mice for the said frame
                 ratpos1 = locations[frame, 0, :, 0]
@@ -100,6 +123,7 @@ def get_rat_id(events, locations, event_type, fps):
                         distance2 = np.sqrt((ratpos2[0] - levx)**2 + (ratpos2[1] - lev2y)**2)
                     else:
                         ratNum = np.nan #assign number for Nan values
+                        # print(index_count, 'lever number is wrong')
                 elif event_type == 'mag':
                     if row.MagNum == 1:
                         distance1 = np.sqrt((ratpos1[0] - magx)**2 + (ratpos1[1] - mag1y)**2)
@@ -123,9 +147,11 @@ def get_rat_id(events, locations, event_type, fps):
                         ratNum = 1
                     else:
                         ratNum = np.nan # neither distance is valid or plausible
-            
+                        # print(index_count, 'neither rat is in range', distance1, distance2)
+        
         # Add new element to the list
         ratID.append(ratNum)
+        index_count += 1
     
     # Add new column to the dataframe
     events["RatID"] = ratID
